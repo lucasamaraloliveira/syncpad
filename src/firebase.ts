@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
-import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -29,9 +29,16 @@ export interface PadCloudData {
   footerText?: string;
 }
 
+export interface UserPresenceData {
+  senderId: string;
+  nickname: string;
+  color: string;
+  activeFileName?: string;
+  lastSeen: number;
+}
+
 /**
  * Inscreve-se para alterações em tempo real de um bloco/pad no Firestore.
- * Se o documento não existir no banco, ele cria automaticamente um registro inicial.
  */
 export function subscribeToPad(
   padName: string,
@@ -45,7 +52,6 @@ export function subscribeToPad(
     if (docSnap.exists()) {
       onData(docSnap.data() as PadCloudData);
     } else {
-      // Documento ainda não existe, cria estado inicial
       const initialData: PadCloudData = {
         text: '',
         updatedAt: Date.now()
@@ -77,4 +83,54 @@ export async function savePadToCloud(padName: string, data: Partial<PadCloudData
   }
 }
 
+/**
+ * Gerencia a presença do usuário atual e escuta outros usuários online no pad via Firestore
+ */
+export function trackPresence(
+  padName: string,
+  user: { senderId: string; nickname: string; color: string; activeFileName?: string },
+  onPresenceChange: (users: { [senderId: string]: UserPresenceData }) => void
+) {
+  const safePadId = padName.trim().toLowerCase() || 'default-pad';
+  const presenceColRef = collection(db, "pads", safePadId, "presence");
+  const myPresenceRef = doc(db, "pads", safePadId, "presence", user.senderId);
+
+  // Heartbeat periodic update
+  const updateMyPresence = () => {
+    setDoc(myPresenceRef, {
+      senderId: user.senderId,
+      nickname: user.nickname,
+      color: user.color,
+      activeFileName: user.activeFileName || 'Texto/Notas',
+      lastSeen: Date.now()
+    }, { merge: true }).catch(() => {});
+  };
+
+  updateMyPresence();
+  const interval = setInterval(updateMyPresence, 10000); // 10s heartbeat
+
+  // Subscribe to all presence docs
+  const unsubscribe = onSnapshot(presenceColRef, (snapshot) => {
+    const activeMap: { [senderId: string]: UserPresenceData } = {};
+    const now = Date.now();
+
+    snapshot.docs.forEach((d) => {
+      const p = d.data() as UserPresenceData;
+      // Filter out users inactive for more than 30s
+      if (p && p.lastSeen && (now - p.lastSeen < 30000)) {
+        activeMap[p.senderId] = p;
+      }
+    });
+
+    onPresenceChange(activeMap);
+  });
+
+  return () => {
+    clearInterval(interval);
+    unsubscribe();
+    deleteDoc(myPresenceRef).catch(() => {});
+  };
+}
+
 export default app;
+

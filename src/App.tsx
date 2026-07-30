@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { subscribeToPad, savePadToCloud } from './firebase';
+import { subscribeToPad, savePadToCloud, trackPresence } from './firebase';
 import { 
   Edit3, 
   Users, 
@@ -417,6 +417,8 @@ export default function App() {
 
 
 
+
+
   const formatFooterText = (text: string, pageNum: number, totalPages: number) => {
     return text
       .replace(/{page}/g, String(pageNum))
@@ -660,6 +662,36 @@ export default function App() {
     }
   }, [peerId, connectionStatus, padName]);
   const [activeFileName, setActiveFileName] = useState<string>('index.html');
+
+  // Track online presence via Firestore
+  useEffect(() => {
+    const currentPad = padName || 'default';
+    const unsubPresence = trackPresence(
+      currentPad,
+      {
+        senderId: mySenderId.current,
+        nickname: myNickname,
+        color: myColor,
+        activeFileName: activeTab === 'code' ? activeFileName : 'Texto/Notas'
+      },
+      (presenceMap) => {
+        const userCount = Math.max(1, Object.keys(presenceMap).length);
+        setActiveUsers(userCount);
+        setActiveUserIds(Object.keys(presenceMap));
+        
+        // Filter out myself for remote cursors / users list
+        const remotes: any = {};
+        Object.entries(presenceMap).forEach(([id, p]) => {
+          if (id !== mySenderId.current) {
+            remotes[id] = p;
+          }
+        });
+        setRemoteCursors(remotes);
+      }
+    );
+
+    return () => unsubPresence();
+  }, [padName, myNickname, myColor, activeTab, activeFileName]);
   const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(true);
    const [isNewFileModalOpen, setIsNewFileModalOpen] = useState<boolean>(false);
   const [newFileName, setNewFileName] = useState<string>('');
@@ -1500,32 +1532,11 @@ export default function App() {
     const nextVersion = versionRef.current + 1;
     setVersion(nextVersion);
 
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      const editMsg: ClientMessage = {
-        type: 'edit',
-        padName,
-        text: editorRef.current ? editorRef.current.innerHTML : text,
-        version: nextVersion,
-        senderId: mySenderId.current,
-        headerText: overrides?.headerText !== undefined ? overrides.headerText : headerText,
-        footerText: overrides?.footerText !== undefined ? overrides.footerText : footerText,
-        headerAlign: overrides?.headerAlign !== undefined ? overrides.headerAlign : headerAlign,
-        headerFont: overrides?.headerFont !== undefined ? overrides.headerFont : headerFont,
-        headerFontSize: overrides?.headerFontSize !== undefined ? overrides.headerFontSize : headerFontSize,
-        headerColor: overrides?.headerColor !== undefined ? overrides.headerColor : headerColor,
-        headerBold: overrides?.headerBold !== undefined ? overrides.headerBold : headerBold,
-        headerItalic: overrides?.headerItalic !== undefined ? overrides.headerItalic : headerItalic,
-        headerUnderline: overrides?.headerUnderline !== undefined ? overrides.headerUnderline : headerUnderline,
-        footerAlign: overrides?.footerAlign !== undefined ? overrides.footerAlign : footerAlign,
-        footerFont: overrides?.footerFont !== undefined ? overrides.footerFont : footerFont,
-        footerFontSize: overrides?.footerFontSize !== undefined ? overrides.footerFontSize : footerFontSize,
-        footerColor: overrides?.footerColor !== undefined ? overrides.footerColor : footerColor,
-        footerBold: overrides?.footerBold !== undefined ? overrides.footerBold : footerBold,
-        footerItalic: overrides?.footerItalic !== undefined ? overrides.footerItalic : footerItalic,
-        footerUnderline: overrides?.footerUnderline !== undefined ? overrides.footerUnderline : footerUnderline,
-      };
-      socketRef.current.send(JSON.stringify(editMsg));
-    }
+    savePadToCloud(padName || 'default', {
+      text: editorRef.current ? editorRef.current.innerHTML : text,
+      headerText: overrides?.headerText !== undefined ? overrides.headerText : headerText,
+      footerText: overrides?.footerText !== undefined ? overrides.footerText : footerText,
+    });
   };
 
   // Handles contenteditable input and synchronization
@@ -1543,17 +1554,6 @@ export default function App() {
 
     const nextVersion = versionRef.current + 1;
     setVersion(nextVersion);
-
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      const editMsg: ClientMessage = {
-        type: 'edit',
-        padName,
-        text: html,
-        version: nextVersion,
-        senderId: mySenderId.current,
-      };
-      socketRef.current.send(JSON.stringify(editMsg));
-    }
   };
 
   // Listen to clicks on the editor to handle checkbox state updates
@@ -3492,7 +3492,7 @@ export default function App() {
       )}
 
       {/* Primary Header */}
-      <header className={`px-2 sm:px-6 h-14 border-b flex items-center justify-between gap-1.5 sm:gap-3 transition-colors shrink-0 ${
+      <header className={`relative z-30 px-2 sm:px-6 h-14 border-b flex items-center justify-between gap-1.5 sm:gap-3 transition-colors shrink-0 ${
         isDarkMode ? 'bg-[#0f0f12] border-white/5' : 'bg-white border-slate-200/80'
       }`}>
         {/* Left branding + URL navigator */}
@@ -3786,7 +3786,7 @@ export default function App() {
             </button>
 
             {isExportDropdownOpen && (
-              <div className={`absolute right-0 mt-2 w-48 rounded-xl border shadow-2xl z-50 divide-y overflow-hidden ${
+              <div className={`absolute right-0 mt-2 w-48 rounded-xl border shadow-2xl z-[100] divide-y overflow-hidden ${
                 isDarkMode ? 'bg-[#0d0d10] border-white/5 divide-white/5 text-[#e0e0e0]' : 'bg-white border-slate-100 divide-slate-100 text-slate-900'
               }`} onClick={(e) => e.stopPropagation()}>
                 <button

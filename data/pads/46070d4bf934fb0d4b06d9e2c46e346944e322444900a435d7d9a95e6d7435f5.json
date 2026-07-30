@@ -29,6 +29,5 @@
       "content": "// Escreva seu código JavaScript interativo aqui!\nconst button = document.getElementById('action-btn');\n\nif (button) {\n    button.addEventListener('click', () => {\n        alert('Botão clicado! JavaScript funcionando perfeitamente.');\n    });\n}",
       "language": "javascript"
     }
-  ],
-  "passwordHash": "46f708b4a9fff1a159c2077d3464746a579fa1037b2fa38af65c7e7a4fc4c7e7"
+  ]
 }

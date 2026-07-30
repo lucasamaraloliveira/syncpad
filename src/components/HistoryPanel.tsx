@@ -50,7 +50,7 @@ export function HistoryPanel({
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 z-40 w-full sm:w-80 flex flex-col shadow-2xl transition-transform duration-300">
+    <div className="fixed inset-y-0 right-0 z-[100] w-full sm:w-80 flex flex-col shadow-2xl transition-transform duration-300">
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/40 backdrop-blur-xs -z-10" onClick={onClose} />
 
