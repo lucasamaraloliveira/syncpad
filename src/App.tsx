@@ -391,24 +391,25 @@ export default function App() {
   // Sync real-time data with Firebase Firestore
   useEffect(() => {
     const currentPad = padName || 'default';
-    setConnectionStatus('connecting');
     const unsubscribe = subscribeToPad(
       currentPad, 
       (data) => {
-        setConnectionStatus('connected');
         if (data && typeof data.text === 'string') {
-          // Update local text state if different
+          // Update local text state and DOM if different from local ref
           if (data.text !== textRef.current) {
             textRef.current = data.text;
             setText(data.text);
+            if (editorRef.current && editorRef.current.innerHTML !== data.text) {
+              editorRef.current.innerHTML = data.text;
+            }
           }
         }
         if (data && Array.isArray(data.codeFiles) && data.codeFiles.length > 0) {
           setCodeFiles(data.codeFiles);
         }
       },
-      () => {
-        setConnectionStatus('disconnected');
+      (status) => {
+        setConnectionStatus(status);
       }
     );
 
@@ -1548,6 +1549,7 @@ export default function App() {
     adjustPageMargins();
     
     const html = editorRef.current.innerHTML;
+    textRef.current = html;
     setText(html);
 
     savePadToCloud(padName || 'default', { text: html });

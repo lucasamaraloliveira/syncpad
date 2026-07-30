@@ -1,6 +1,14 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
-import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc } from "firebase/firestore";
+import { 
+  getFirestore, 
+  doc, 
+  setDoc, 
+  onSnapshot, 
+  collection, 
+  deleteDoc,
+  enableIndexedDbPersistence
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -17,6 +25,17 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize Cloud Firestore
 export const db = getFirestore(app);
+
+// Enable offline persistence so data remains intact even if network flickers
+if (typeof window !== 'undefined') {
+  enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn('Multiple tabs open, offline persistence enabled in first tab only.');
+    } else if (err.code === 'unimplemented') {
+      console.warn('Browser does not support offline persistence.');
+    }
+  });
+}
 
 // Safe Analytics initialization
 export const analyticsPromise = isSupported().then((supported) => supported ? getAnalytics(app) : null);
@@ -38,33 +57,60 @@ export interface UserPresenceData {
 }
 
 /**
- * Inscreve-se para alterações em tempo real de um bloco/pad no Firestore.
+ * Inscreve-se para alterações em tempo real de um bloco/pad no Firestore com auto-reconexão resiliente.
  */
 export function subscribeToPad(
   padName: string,
   onData: (data: PadCloudData) => void,
-  onError?: (err: any) => void
+  onStatusChange?: (status: 'connected' | 'connecting' | 'disconnected') => void
 ) {
   const safePadId = padName.trim().toLowerCase() || 'default-pad';
   const padDocRef = doc(db, "pads", safePadId);
 
-  return onSnapshot(padDocRef, (docSnap) => {
-    if (docSnap.exists()) {
-      onData(docSnap.data() as PadCloudData);
-    } else {
-      const initialData: PadCloudData = {
-        text: '',
-        updatedAt: Date.now()
-      };
-      setDoc(padDocRef, initialData, { merge: true }).catch(err => {
-        console.error("Erro ao inicializar pad no Firestore:", err);
-      });
-      onData(initialData);
-    }
-  }, (error) => {
-    console.error("Erro ao sincronizar com Firestore:", error);
-    if (onError) onError(error);
-  });
+  let unsubscribe: (() => void) | null = null;
+  let retryTimeout: any = null;
+
+  const connect = () => {
+    if (onStatusChange) onStatusChange('connecting');
+
+    unsubscribe = onSnapshot(
+      padDocRef,
+      { includeMetadataChanges: true },
+      (docSnap) => {
+        // Connected successfully to Firestore cloud or local cache
+        if (onStatusChange) onStatusChange('connected');
+
+        if (docSnap.exists()) {
+          onData(docSnap.data() as PadCloudData);
+        } else {
+          const initialData: PadCloudData = {
+            text: '',
+            updatedAt: Date.now()
+          };
+          setDoc(padDocRef, initialData, { merge: true }).catch(() => {});
+          onData(initialData);
+        }
+      },
+      (error) => {
+        console.warn("Firestore snapshot connection issue:", error.message);
+        if (onStatusChange) onStatusChange('disconnected');
+
+        // Automatically attempt reconnection after 3s
+        if (retryTimeout) clearTimeout(retryTimeout);
+        retryTimeout = setTimeout(() => {
+          if (unsubscribe) unsubscribe();
+          connect();
+        }, 3000);
+      }
+    );
+  };
+
+  connect();
+
+  return () => {
+    if (retryTimeout) clearTimeout(retryTimeout);
+    if (unsubscribe) unsubscribe();
+  };
 }
 
 /**
