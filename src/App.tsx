@@ -391,21 +391,30 @@ export default function App() {
   // Sync real-time data with Firebase Firestore
   useEffect(() => {
     const currentPad = padName || 'default';
-    const unsubscribe = subscribeToPad(currentPad, (data) => {
-      if (data && typeof data.text === 'string') {
-        // Update local text state if different
-        if (data.text !== textRef.current) {
-          textRef.current = data.text;
-          setText(data.text);
+    setConnectionStatus('connecting');
+    const unsubscribe = subscribeToPad(
+      currentPad, 
+      (data) => {
+        setConnectionStatus('connected');
+        if (data && typeof data.text === 'string') {
+          // Update local text state if different
+          if (data.text !== textRef.current) {
+            textRef.current = data.text;
+            setText(data.text);
+          }
         }
+        if (data && Array.isArray(data.codeFiles) && data.codeFiles.length > 0) {
+          setCodeFiles(data.codeFiles);
+        }
+      },
+      () => {
+        setConnectionStatus('disconnected');
       }
-      if (data && Array.isArray(data.codeFiles) && data.codeFiles.length > 0) {
-        setCodeFiles(data.codeFiles);
-      }
-    });
+    );
 
     return () => unsubscribe();
   }, [padName]);
+
 
 
   const formatFooterText = (text: string, pageNum: number, totalPages: number) => {

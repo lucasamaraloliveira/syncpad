@@ -35,7 +35,8 @@ export interface PadCloudData {
  */
 export function subscribeToPad(
   padName: string,
-  onData: (data: PadCloudData) => void
+  onData: (data: PadCloudData) => void,
+  onError?: (err: any) => void
 ) {
   const safePadId = padName.trim().toLowerCase() || 'default-pad';
   const padDocRef = doc(db, "pads", safePadId);
@@ -56,6 +57,7 @@ export function subscribeToPad(
     }
   }, (error) => {
     console.error("Erro ao sincronizar com Firestore:", error);
+    if (onError) onError(error);
   });
 }
 
