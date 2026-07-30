@@ -1,0 +1,34 @@
+{
+  "name": "teste",
+  "text": "<p style=\"margin-top: 16px;\"><br></p>",
+  "version": 6,
+  "updatedAt": 1785374708392,
+  "history": [
+    {
+      "id": "1785374708392",
+      "padName": "teste",
+      "text": "<p style=\"margin-top: 16px;\">teste</p>",
+      "version": 5,
+      "timestamp": 1785374708392,
+      "label": "Backup Automático (v5)"
+    }
+  ],
+  "codeFiles": [
+    {
+      "name": "index.html",
+      "content": "<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Minha Página Web</title>\n    <link rel=\"stylesheet\" href=\"style.css\">\n</head>\n<body>\n    <div class=\"card\">\n        <h1>Olá do SyncPad!</h1>\n        <p>Este é um ambiente interativo para testar seus códigos HTML, CSS e JavaScript.</p>\n        <button id=\"action-btn\">Clique aqui</button>\n    </div>\n    \n    <script src=\"script.js\"></script>\n</body>\n</html>",
+      "language": "html"
+    },
+    {
+      "name": "style.css",
+      "content": "body {\n    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;\n    background: linear-gradient(135deg, #0f172a, #1e1b4b);\n    color: #f8fafc;\n    display: flex;\n    justify-content: center;\n    align-items: center;\n    min-height: 100vh;\n    margin: 0;\n}\n\n.card {\n    background: rgba(255, 255, 255, 0.05);\n    backdrop-filter: blur(10px);\n    border: 1px solid rgba(255, 255, 255, 0.1);\n    padding: 2.5rem;\n    border-radius: 1rem;\n    text-align: center;\n    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);\n    max-width: 400px;\n}\n\nh1 {\n    color: #38bdf8;\n    margin-top: 0;\n}\n\nbutton {\n    background: #38bdf8;\n    color: #0f172a;\n    border: none;\n    padding: 0.75rem 1.5rem;\n    font-weight: bold;\n    border-radius: 0.5rem;\n    cursor: pointer;\n    transition: all 0.2s;\n}\n\nbutton:hover {\n    background: #0ea5e9;\n    transform: translateY(-2px);\n}",
+      "language": "css"
+    },
+    {
+      "name": "script.js",
+      "content": "// Escreva seu código JavaScript interativo aqui!\nconst button = document.getElementById('action-btn');\n\nif (button) {\n    button.addEventListener('click', () => {\n        alert('Botão clicado! JavaScript funcionando perfeitamente.');\n    });\n}",
+      "language": "javascript"
+    }
+  ],
+  "passwordHash": "46f708b4a9fff1a159c2077d3464746a579fa1037b2fa38af65c7e7a4fc4c7e7"
+}

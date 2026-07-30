@@ -1,0 +1,6 @@
+{
+  "name": "SyncPad Colaborativo",
+  "description": "Um editor de texto online e colaborativo em tempo real, simples e seguro. Crie e edite notas instantaneamente por meio de URLs simples, sem necessidade de login, com suporte a markdown, versionamento e exportação.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
